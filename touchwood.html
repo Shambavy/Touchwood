@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>For You 🩷</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Sacramento&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#fdf6ec 0%,#fce8d3 45%,#f0d5c8 75%,#e8c9bb 100%);
+  font-family:'DM Sans',sans-serif;overflow:hidden;
+}
+
+/* PARTICLES */
+.particle{position:fixed;pointer-events:none;animation:floatUp linear infinite;opacity:0;z-index:0;}
+@keyframes floatUp{
+  0%{transform:translateY(110vh) rotate(0deg);opacity:0;}
+  10%{opacity:.8;}90%{opacity:.5;}
+  100%{transform:translateY(-10vh) rotate(360deg);opacity:0;}
+}
+
+/* ENVELOPE */
+.env-wrap{perspective:1200px;cursor:pointer;position:relative;z-index:10;user-select:none;}
+.envelope{
+  width:340px;height:220px;position:relative;transform-style:preserve-3d;
+  transition:transform .8s cubic-bezier(.4,0,.2,1);
+  filter:drop-shadow(0 20px 60px rgba(180,100,80,.35));
+}
+.envelope.opened{transform:rotateX(-15deg) scale(.82);}
+.env-body{
+  width:100%;height:100%;
+  background:linear-gradient(135deg,#f7e9d6,#eedccc);
+  border-radius:8px 8px 18px 18px;position:absolute;
+  border:1.5px solid rgba(180,130,100,.3);
+}
+.env-sides{
+  position:absolute;inset:0;border-radius:8px 8px 18px 18px;
+  background:
+    linear-gradient(135deg,transparent 49.5%,rgba(180,130,100,.18) 49.5%,rgba(180,130,100,.18) 50.5%,transparent 50.5%),
+    linear-gradient(-135deg,transparent 49.5%,rgba(180,130,100,.18) 49.5%,rgba(180,130,100,.18) 50.5%,transparent 50.5%);
+}
+.env-flap{
+  position:absolute;top:0;left:0;right:0;height:130px;
+  background:linear-gradient(150deg,#f2dcc6,#e9cfb5);
+  clip-path:polygon(0 0,50% 72%,100% 0);
+  border-radius:8px 8px 0 0;transform-origin:top center;
+  transition:transform .85s cubic-bezier(.4,0,.2,1);z-index:5;
+}
+.env-flap::after{content:'💌';position:absolute;bottom:18px;left:50%;transform:translateX(-50%);font-size:24px;}
+.envelope.opened .env-flap{transform:rotateX(-180deg);}
+.open-hint{
+  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  font-family:'Sacramento',cursive;font-size:19px;color:rgba(160,100,80,.8);
+  white-space:nowrap;animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:.55;}50%{opacity:1;}}
+
+/* OVERLAY */
+.card-overlay{
+  position:fixed;inset:0;background:rgba(45,25,15,.75);
+  backdrop-filter:blur(10px);z-index:100;
+  display:none;align-items:center;justify-content:center;
+  padding:12px;opacity:0;transition:opacity .55s;
+}
+.card-overlay.visible{display:flex;opacity:1;}
+
+/* CARD — fixed height, no scroll, fits screen */
+.card{
+  width:min(520px,96vw);
+  height:min(680px,94vh);
+  background:linear-gradient(165deg,#fffaf4 0%,#fdf2e5 50%,#f9e8d5 100%);
+  border-radius:26px;position:relative;overflow:hidden;
+  transform:scale(.68) translateY(50px);
+  transition:transform .75s cubic-bezier(.34,1.56,.64,1);
+  border:1px solid rgba(210,160,125,.2);
+  box-shadow:0 32px 90px rgba(120,55,35,.42),inset 0 0 50px rgba(255,220,185,.15);
+  display:flex;flex-direction:column;
+}
+.card-overlay.visible .card{transform:scale(1) translateY(0);}
+
+.close-btn{
+  position:absolute;top:11px;right:13px;
+  background:rgba(180,120,90,.14);border:1px solid rgba(180,120,90,.28);
+  border-radius:50%;width:28px;height:28px;cursor:pointer;
+  font-size:12px;color:#9a5a3a;display:flex;align-items:center;justify-content:center;
+  z-index:200;transition:background .2s;
+}
+.close-btn:hover{background:rgba(180,120,90,.3);}
+
+/* ── PAGE SYSTEM — one page at a time, no overflow ── */
+.pages{flex:1;position:relative;overflow:hidden;}
+.page{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;
+  transition:opacity .45s ease, transform .45s ease;
+  transform:translateX(60px);
+}
+.page.active{opacity:1;pointer-events:all;transform:translateX(0);}
+.page.exit-left{opacity:0;transform:translateX(-60px);}
+
+/* ── SCENE (top illustration) ── */
+.scene{
+  position:relative;overflow:hidden;flex-shrink:0;
+  border-radius:26px 26px 0 0;
+}
+
+/* ── TEXT AREA ── */
+.txt{
+  flex:1;display:flex;flex-direction:column;justify-content:center;
+  padding:18px 28px 10px;text-align:center;
+  min-height:0;
+}
+
+/* ── NAV BAR ── */
+.nav-bar{
+  flex-shrink:0;padding:10px 0 14px;
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  background:transparent;
+}
+.nav-pill{
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(200,150,110,.15);border:1.5px solid rgba(200,150,110,.35);
+  border-radius:50%;width:36px;height:36px;cursor:pointer;
+  font-size:18px;color:#9a5a3a;font-weight:bold;
+  transition:all .22s;user-select:none;
+}
+.nav-pill:hover{background:rgba(200,150,110,.35);transform:scale(1.1);}
+.nav-pill:disabled,.nav-pill[disabled]{opacity:.25;pointer-events:none;}
+
+.dots{display:flex;gap:7px;align-items:center;}
+.dot{width:7px;height:7px;border-radius:50%;background:rgba(180,120,90,.22);transition:all .3s;cursor:pointer;}
+.dot.active{background:#c07050;transform:scale(1.4);}
+
+/* ANIMATIONS */
+@keyframes fadeUp{0%{opacity:0;transform:translateY(14px);}100%{opacity:1;transform:translateY(0);}}
+@keyframes pulse{0%,100%{opacity:.55;}50%{opacity:1;}}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(.55);}50%{opacity:1;transform:scale(1.2);}}
+@keyframes sunPulse{0%,100%{box-shadow:0 0 40px 18px rgba(255,210,80,.38);}50%{box-shadow:0 0 65px 28px rgba(255,210,80,.58);}}
+@keyframes driftCloud{0%{transform:translateX(-120px);}100%{transform:translateX(680px);}}
+@keyframes wavePan{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+@keyframes shimmer{0%,100%{opacity:.5;transform:scaleX(.8);}50%{opacity:1;transform:scaleX(1.25);}}
+@keyframes gullFly{0%{transform:translateX(-40px);opacity:0;}10%{opacity:.75;}90%{opacity:.75;}100%{transform:translateX(640px);opacity:0;}}
+@keyframes sway{0%,100%{transform:rotate(-1.5deg);}50%{transform:rotate(1.5deg);}}
+@keyframes cupBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-2px);}}
+@keyframes bikeBob{0%{transform:translateY(0);}100%{transform:translateY(-2px);}}
+@keyframes breathe{0%,100%{transform:scale(1);}50%{transform:scale(1.04);}}
+@keyframes puzzlePop{0%{opacity:0;transform:translateX(-50%) scale(.5);}100%{opacity:1;transform:translateX(-50%) scale(1);}}
+@keyframes moonGlow{0%,100%{box-shadow:0 0 28px 12px rgba(255,215,100,.22);}50%{box-shadow:0 0 50px 22px rgba(255,215,100,.42);}}
+@keyframes shootStar{0%{transform:translateX(0) translateY(0) rotate(-22deg);opacity:0;width:0;}5%{opacity:1;width:70px;}30%{transform:translateX(400px) translateY(90px) rotate(-22deg);opacity:0;}100%{opacity:0;}}
+@keyframes orbBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);}}
+@keyframes linePulse{0%,100%{opacity:.35;transform:translateX(-50%) scaleX(.65);}50%{opacity:1;transform:translateX(-50%) scaleX(1);}}
+@keyframes hb{0%,100%{transform:translateX(-50%) scale(1);}35%{transform:translateX(-50%) scale(1.35);}65%{transform:translateX(-50%) scale(.92);}}
+@keyframes petalRain{0%{transform:translateY(-15px) rotate(0deg);opacity:0;}8%{opacity:.85;}92%{opacity:.7;}100%{transform:translateY(250px) rotate(380deg);opacity:0;}}
+@keyframes starTwinkle{0%,100%{opacity:.15;}50%{opacity:1;}}
+@keyframes roadScroll{0%{background-position:0;}100%{background-position:56px;}}
+
+/* ── SLIDE 1 styles ── */
+.s1-scene{height:210px;}
+.s1-sky{position:absolute;inset:0;background:linear-gradient(180deg,#f7d7a0 0%,#f4b87a 28%,#f0a060 48%,#9fcfe0 48%,#6bb8d4 75%,#4a9ab8 100%);}
+.s1-sun{position:absolute;top:16px;right:62px;width:50px;height:50px;border-radius:50%;background:radial-gradient(circle,#fffde7 20%,#ffd54f 55%,rgba(255,200,50,0)100%);box-shadow:0 0 40px 18px rgba(255,210,80,.38);animation:sunPulse 4s ease-in-out infinite;}
+.s1-cloud{position:absolute;background:rgba(255,255,255,.78);border-radius:40px;filter:blur(2.5px);animation:driftCloud linear infinite;}
+.s1-ocean{position:absolute;bottom:0;left:0;right:0;height:105px;}
+.s1-ocean-bg{position:absolute;inset:0;background:linear-gradient(180deg,rgba(100,185,215,.5),rgba(55,140,185,.92),rgba(38,118,168,1));}
+.s1-waves{position:absolute;top:-1px;left:0;width:200%;animation:wavePan 8s linear infinite;}
+.s1-shimmer{position:absolute;top:10px;right:55px;width:70px;height:4px;background:linear-gradient(90deg,transparent,rgba(255,240,170,.95),transparent);border-radius:4px;animation:shimmer 2.5s ease-in-out infinite;}
+.s1-palm{position:absolute;bottom:48px;font-size:30px;}
+.s1-gull{position:absolute;font-size:12px;animation:gullFly linear infinite;opacity:.75;}
+.s1-cafe{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);width:230px;}
+.s1-awning{height:22px;background:repeating-linear-gradient(90deg,#c0392b 0,#c0392b 18%,#fff 18%,#fff 36%);clip-path:polygon(0 0,100% 0,97% 100%,3% 100%);}
+.s1-roof{background:linear-gradient(160deg,#a93226,#c0392b,#a93226);height:33px;clip-path:polygon(0 100%,4% 0,96% 0,100% 100%);position:relative;}
+.s1-sign{position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);font-family:'Sacramento',cursive;font-size:10px;color:rgba(130,55,38,.8);white-space:nowrap;}
+.s1-wall{background:linear-gradient(160deg,#f7e9ce,#eedcb2);height:88px;border:1.5px solid rgba(180,150,100,.38);position:relative;display:flex;align-items:center;justify-content:center;}
+.s1-win{width:148px;height:62px;background:linear-gradient(135deg,rgba(255,242,195,.45),rgba(255,226,160,.6));border:2px solid rgba(180,150,100,.48);border-radius:3px;position:relative;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;overflow:hidden;}
+.s1-win::before,.s1-win::after{content:'';position:absolute;background:rgba(180,150,100,.38);}
+.s1-win::before{top:0;bottom:0;left:50%;width:1.5px;}
+.s1-win::after{left:0;right:0;top:50%;height:1.5px;}
+.s1-table{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:46px;height:2px;background:rgba(140,100,70,.55);border-radius:2px;}
+.s1-cups{position:absolute;bottom:11px;left:50%;transform:translateX(-50%);display:flex;gap:10px;}
+.cup{font-size:10px;animation:cupBob 3s ease-in-out infinite;}
+.s1-figs{display:flex;align-items:flex-end;gap:15px;position:relative;z-index:2;}
+.fig-she{display:flex;flex-direction:column;align-items:center;animation:sway 4s ease-in-out infinite;}
+.fig-she .fhead{width:10px;height:10px;background:#8B5E3C;border-radius:50%;position:relative;}
+.fig-she .fhead::after{content:'';position:absolute;top:-3px;left:-1px;right:-1px;height:5px;background:#2c1810;border-radius:50% 50% 0 0;}
+.fig-she .fbody{width:9px;height:17px;background:linear-gradient(180deg,#c0392b,#e91e63,#9b59b6);border-radius:3px 3px 0 0;position:relative;}
+.fig-she .fbody::before{content:'';position:absolute;top:2px;right:-4px;width:5px;height:15px;background:linear-gradient(180deg,rgba(231,76,60,.68),rgba(155,89,182,.5));border-radius:0 0 4px 4px;transform:rotate(5deg);}
+.fig-he{display:flex;flex-direction:column;align-items:center;animation:sway 4s ease-in-out infinite .6s;}
+.fig-he .fhead{width:10px;height:10px;background:#8B5E3C;border-radius:50%;position:relative;}
+.fig-he .fhead::after{content:'';position:absolute;top:-2px;left:0;right:0;height:4px;background:#1a0e06;border-radius:50% 50% 0 0;}
+.fig-he .fbody{width:11px;height:17px;background:linear-gradient(180deg,#2980b9,#3498db);border-radius:3px 3px 0 0;}
+.fig-he .flegs{display:flex;gap:2px;}
+.fig-he .fleg{width:4px;height:8px;background:#2c3e50;border-radius:0 0 2px 2px;}
+.spk{position:absolute;animation:twinkle ease-in-out infinite;color:#ffd060;}
+
+/* txt typography */
+.lbl{font-family:'Sacramento',cursive;font-size:clamp(14px,3vw,16px);color:#b06040;margin-bottom:3px;}
+.headline{font-family:'Playfair Display',serif;font-size:clamp(16px,3.8vw,21px);font-weight:700;line-height:1.3;margin-bottom:6px;}
+.body-txt{font-size:clamp(12px,2.6vw,14px);line-height:1.75;color:#6a3e22;}
+.funny{font-family:'Sacramento',cursive;font-size:clamp(18px,4vw,23px);margin-top:8px;}
+.emoji-row{font-size:18px;letter-spacing:5px;margin-top:8px;}
+
+/* anim helpers */
+.anim-1{opacity:0;animation:fadeUp .6s ease forwards .2s;}
+.anim-2{opacity:0;animation:fadeUp .6s ease forwards .4s;}
+.anim-3{opacity:0;animation:fadeUp .6s ease forwards .6s;}
+.anim-4{opacity:0;animation:fadeUp .6s ease forwards .8s;}
+.anim-5{opacity:0;animation:fadeUp .6s ease forwards 1s;}
+
+/* ── SLIDE 2 ── */
+.s2-scene{height:210px;}
+.s2-bg{position:absolute;inset:0;background:linear-gradient(170deg,#e8f5f0 0%,#d0eae2 35%,#b8ddd4 65%,#a0d0c6 100%);}
+.s2-ground{position:absolute;bottom:0;left:0;right:0;height:50px;background:linear-gradient(0deg,#8ab88a,#a0cc98);}
+.s2-road{position:absolute;bottom:0;left:0;right:0;height:28px;background:linear-gradient(0deg,#666876,#787a8a);}
+.s2-road::after{content:'';position:absolute;top:50%;left:0;right:0;height:3px;background:repeating-linear-gradient(90deg,#ffd700 0,#ffd700 28px,transparent 28px,transparent 56px);transform:translateY(-50%);animation:roadScroll 1s linear infinite;}
+.s2-bike{position:absolute;bottom:26px;left:50px;animation:bikeBob .45s ease-in-out infinite alternate;}
+.s2-yogi{position:absolute;bottom:48px;right:48px;animation:breathe 4s ease-in-out infinite;}
+.yoga-mat{position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:48px;height:5px;background:linear-gradient(90deg,#e91e63,#ff5252);border-radius:3px;}
+.s2-puzzle-wrap{position:absolute;bottom:54px;left:50%;transform:translateX(-50%);animation:puzzlePop 1s cubic-bezier(.34,1.56,.64,1) forwards;animation-delay:.8s;opacity:0;}
+.s2-tree{position:absolute;bottom:48px;font-size:22px;}
+.s2-spark{position:absolute;animation:twinkle ease-in-out infinite;font-size:13px;color:#ffd700;}
+
+/* ── SLIDE 3 ── */
+.s3-scene{height:210px;}
+.s3-bg{position:absolute;inset:0;background:linear-gradient(170deg,#12082a 0%,#220d45 40%,#3d1368 70%,#5c2090 100%);}
+.star-bg{position:absolute;inset:0;}
+.star-dot{position:absolute;background:#fff;border-radius:50%;animation:starTwinkle ease-in-out infinite;}
+.s3-moon{position:absolute;top:16px;right:50px;width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 38% 42%,#fff9e8,#ffd54f);box-shadow:0 0 28px 12px rgba(255,215,100,.22);animation:moonGlow 5s ease-in-out infinite;}
+.shoot{position:absolute;height:1.5px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent);border-radius:2px;animation:shootStar linear infinite;}
+.s3-orbs{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);width:180px;height:85px;}
+.orb{position:absolute;bottom:0;width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;animation:orbBob 3s ease-in-out infinite;}
+.orb-l{left:6px;background:radial-gradient(circle,rgba(255,100,155,.35),rgba(200,50,120,.1));box-shadow:0 0 28px 8px rgba(255,80,145,.22);border:1.5px solid rgba(255,120,165,.28);}
+.orb-r{right:6px;background:radial-gradient(circle,rgba(80,155,255,.35),rgba(30,80,210,.1));box-shadow:0 0 28px 8px rgba(60,125,255,.22);border:1.5px solid rgba(100,155,255,.28);animation-delay:.9s;}
+.orb-line{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);width:52px;height:1.5px;background:linear-gradient(90deg,rgba(255,120,165,.8),rgba(255,255,255,.95),rgba(100,160,255,.8));border-radius:2px;animation:linePulse 2s ease-in-out infinite;}
+.s3-heart{position:absolute;bottom:118px;left:50%;transform:translateX(-50%);font-size:20px;animation:hb 1.4s ease-in-out infinite;}
+.petal{position:absolute;font-size:12px;animation:petalRain linear infinite;pointer-events:none;}
+</style>
+</head>
+<body>
+
+<div id="particles"></div>
+
+<!-- ENVELOPE -->
+<div class="env-wrap" onclick="openCard()">
+  <div class="envelope" id="envelope">
+    <div class="env-body"><div class="env-sides"></div></div>
+    <div class="env-flap"></div>
+    <div class="open-hint">tap to open ✨</div>
+  </div>
+</div>
+
+<!-- CARD -->
+<div class="card-overlay" id="cardOverlay">
+  <div class="card" id="mainCard">
+    <button class="close-btn" onclick="closeCard()">✕</button>
+
+    <div class="pages" id="pages">
+
+      <!-- PAGE 1 -->
+      <div class="page active" id="page0">
+        <div class="scene s1-scene">
+          <div class="s1-sky"></div>
+          <div class="s1-sun"></div>
+          <div class="s1-cloud" style="top:16px;width:75px;height:18px;animation-duration:22s;"></div>
+          <div class="s1-cloud" style="top:34px;width:50px;height:13px;animation-duration:32s;animation-delay:10s;"></div>
+          <div class="s1-gull" style="top:46px;animation-duration:15s;animation-delay:1s;">🕊️</div>
+          <div class="s1-gull" style="top:66px;animation-duration:21s;animation-delay:6s;">🕊️</div>
+          <div class="s1-ocean">
+            <div class="s1-ocean-bg"></div>
+            <svg class="s1-waves" viewBox="0 0 1440 55" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;">
+              <path d="M0,18 C120,36 240,0 360,18 C480,36 600,0 720,18 C840,36 960,0 1080,18 C1200,36 1320,0 1440,18 L1440,0 L0,0 Z" fill="rgba(255,255,255,0.2)"/>
+              <path d="M0,32 C100,50 200,14 300,32 C400,50 500,14 600,32 C700,50 800,14 900,32 C1000,50 1100,14 1200,32 C1300,50 1400,14 1440,32 L1440,0 L0,0 Z" fill="rgba(255,255,255,0.1)"/>
+            </svg>
+            <div class="s1-shimmer"></div>
+          </div>
+          <div class="s1-palm" style="left:10px;">🌴</div>
+          <div class="s1-palm" style="right:12px;font-size:24px;">🌴</div>
+          <div class="s1-cafe">
+            <div class="s1-awning"></div>
+            <div class="s1-roof"><span class="s1-sign">Café by the Sea ☕</span></div>
+            <div class="s1-wall">
+              <div class="s1-win">
+                <div class="s1-table"></div>
+                <div class="s1-cups">
+                  <span class="cup">☕</span>
+                  <span class="cup" style="animation-delay:.7s;">☕</span>
+                </div>
+                <div class="s1-figs">
+                  <div class="fig-she"><div class="fhead"></div><div class="fbody"></div></div>
+                  <div class="fig-he"><div class="fhead"></div><div class="fbody"></div><div class="flegs"><div class="fleg"></div><div class="fleg"></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="spk" style="top:16px;left:26px;font-size:12px;animation-duration:2.1s;">✦</div>
+          <div class="spk" style="top:42px;right:36px;font-size:11px;animation-duration:1.9s;animation-delay:.5s;">✧</div>
+          <div class="spk" style="top:78px;left:88px;font-size:13px;animation-duration:2.5s;animation-delay:1s;">✦</div>
+        </div>
+        <div class="txt">
+          <div class="lbl anim-1">for you 🌊</div>
+          <div class="headline anim-2" style="color:#c07050;">Sooo happy God brought both of you together 🩷</div>
+          <div class="body-txt anim-3">The sound of waves... food getting cold - and conversations that just felt like home from the very first word.</div>
+          <div class="emoji-row anim-4">🌊 ☕ 🌴 🩷</div>
+        </div>
+      </div>
+
+      <!-- PAGE 2 -->
+      <div class="page" id="page1">
+        <div class="scene s2-scene">
+          <div class="s2-bg"></div>
+          <svg style="position:absolute;bottom:50px;left:0;width:100%;height:90px;" viewBox="0 0 520 90" preserveAspectRatio="none" fill="none">
+            <path d="M0,90 L70,28 L145,62 L215,8 L290,52 L365,20 L435,58 L520,90 Z" fill="rgba(140,190,160,0.45)"/>
+            <path d="M0,90 L55,50 L130,72 L185,38 L255,68 L325,34 L400,65 L470,44 L520,90 Z" fill="rgba(160,205,178,0.5)"/>
+          </svg>
+          <div class="s2-ground"></div>
+          <div class="s2-road"></div>
+          <div class="s2-tree" style="left:12px;">🌿</div>
+          <div class="s2-tree" style="right:16px;">🌿</div>
+          <!-- Motorbike -->
+          <div class="s2-bike">
+            <svg width="150" height="80" viewBox="0 0 160 82" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- REAR WHEEL -->
+              <circle cx="32" cy="58" r="22" fill="#1a1a1a" stroke="#444" stroke-width="2"/>
+              <circle cx="32" cy="58" r="15" fill="none" stroke="#555" stroke-width="1.5"/>
+              <circle cx="32" cy="58" r="5" fill="#666"/>
+              <!-- spokes -->
+              <line x1="32" y1="36" x2="32" y2="80" stroke="#555" stroke-width="1"/>
+              <line x1="10" y1="58" x2="54" y2="58" stroke="#555" stroke-width="1"/>
+              <line x1="16" y1="42" x2="48" y2="74" stroke="#555" stroke-width="1"/>
+              <line x1="48" y1="42" x2="16" y2="74" stroke="#555" stroke-width="1"/>
+
+              <!-- FRONT WHEEL -->
+              <circle cx="128" cy="58" r="22" fill="#1a1a1a" stroke="#444" stroke-width="2"/>
+              <circle cx="128" cy="58" r="15" fill="none" stroke="#555" stroke-width="1.5"/>
+              <circle cx="128" cy="58" r="5" fill="#666"/>
+              <line x1="128" y1="36" x2="128" y2="80" stroke="#555" stroke-width="1"/>
+              <line x1="106" y1="58" x2="150" y2="58" stroke="#555" stroke-width="1"/>
+              <line x1="112" y1="42" x2="144" y2="74" stroke="#555" stroke-width="1"/>
+              <line x1="144" y1="42" x2="112" y2="74" stroke="#555" stroke-width="1"/>
+
+              <!-- SWINGARM rear -->
+              <path d="M50,55 L32,58" stroke="#555" stroke-width="3" stroke-linecap="round"/>
+
+              <!-- ENGINE BLOCK -->
+              <rect x="48" y="44" width="30" height="18" rx="3" fill="#888"/>
+              <rect x="52" y="48" width="22" height="10" rx="2" fill="#666"/>
+
+              <!-- EXHAUST -->
+              <path d="M50,58 Q38,64 28,67" stroke="#aaa" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M28,67 L22,67" stroke="#bbb" stroke-width="4" stroke-linecap="round"/>
+
+              <!-- MAIN FRAME -->
+              <path d="M54,44 L68,20 L90,18 L100,30 L80,44 Z" fill="#c0392b"/>
+
+              <!-- FUEL TANK -->
+              <path d="M68,20 L76,10 L92,10 L100,20 L90,18 Z" fill="#e74c3c"/>
+              <!-- Tank highlight -->
+              <path d="M72,12 Q82,9 90,12" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+              <!-- SEAT -->
+              <path d="M65,20 Q80,16 100,20 L98,26 Q80,22 67,26 Z" fill="#111"/>
+
+              <!-- FRONT FAIRING -->
+              <path d="M100,22 L118,30 L122,44 L128,36 L128,44 L118,48 L100,44 Z" fill="#c0392b"/>
+              <!-- Fairing highlight -->
+              <path d="M103,24 L116,32" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" stroke-linecap="round"/>
+
+              <!-- FRONT FORK -->
+              <line x1="118" y1="44" x2="128" y2="58" stroke="#777" stroke-width="4" stroke-linecap="round"/>
+              <line x1="114" y1="44" x2="124" y2="58" stroke="#888" stroke-width="2.5" stroke-linecap="round"/>
+
+              <!-- HEADLIGHT -->
+              <ellipse cx="122" cy="34" rx="6" ry="5" fill="#ffeea0" stroke="#ddd" stroke-width="1"/>
+              <ellipse cx="122" cy="34" rx="3" ry="2.5" fill="#fff"/>
+
+              <!-- HANDLEBAR -->
+              <path d="M98,20 Q108,14 114,16" stroke="#333" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <circle cx="114" cy="16" r="3" fill="#222"/>
+
+              <!-- RIDER TORSO (leaning forward) -->
+              <path d="M78,22 Q82,10 90,6 L96,8 Q90,14 86,24 Z" fill="#2471a3"/>
+              <!-- Rider legs -->
+              <path d="M80,34 Q74,38 70,44 L76,46 Q80,40 86,36 Z" fill="#1a5276"/>
+
+              <!-- HELMET -->
+              <ellipse cx="91" cy="5" rx="11" ry="9" fill="#e74c3c"/>
+              <!-- Helmet bottom ridge -->
+              <path d="M80,8 Q91,14 102,8" stroke="#c0392b" stroke-width="2" fill="none"/>
+              <!-- Visor -->
+              <path d="M82,6 Q91,11 100,6" stroke="rgba(0,0,0,0.5)" stroke-width="3" fill="rgba(0,0,0,0.3)" stroke-linecap="round"/>
+
+              <!-- Arms -->
+              <path d="M93,10 Q104,12 112,15" stroke="#2471a3" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+
+              <!-- SPEED LINES -->
+              <line x1="0" y1="40" x2="18" y2="40" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-dasharray="5 4"/>
+              <line x1="0" y1="50" x2="12" y2="50" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-dasharray="4 5"/>
+              <line x1="0" y1="60" x2="8"  y2="60" stroke="rgba(255,255,255,0.25)" stroke-width="1" stroke-dasharray="3 5"/>
+            </svg>
+          </div>
+          <!-- Yogi meditating -->
+          <div class="s2-yogi">
+            <div class="yoga-mat"></div>
+            <svg width="52" height="74" viewBox="0 0 58 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="29" cy="66" rx="22" ry="8" fill="rgba(233,30,99,0.2)"/>
+              <path d="M8,65 Q20,58 29,62 Q38,58 50,65" stroke="#7b2d8b" stroke-width="5" stroke-linecap="round" fill="none"/>
+              <rect x="22" y="36" width="14" height="26" rx="5" fill="#9b2db8"/>
+              <rect x="25" y="30" width="8" height="8" rx="3" fill="#c8845a"/>
+              <circle cx="29" cy="22" r="11" fill="#c8845a"/>
+              <path d="M19,16 Q29,5 39,16" fill="#2c1810"/>
+              <circle cx="29" cy="9" r="5" fill="#2c1810"/>
+              <path d="M24,22 Q26,24 28,22" stroke="#7a4a30" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+              <path d="M30,22 Q32,24 34,22" stroke="#7a4a30" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+              <path d="M25,27 Q29,30 33,27" stroke="#9a5a38" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+              <path d="M22,48 Q14,56 12,62" stroke="#9b2db8" stroke-width="4" stroke-linecap="round" fill="none"/>
+              <path d="M36,48 Q44,56 46,62" stroke="#9b2db8" stroke-width="4" stroke-linecap="round" fill="none"/>
+              <circle cx="11" cy="63" r="4" fill="#c8845a"/>
+              <circle cx="47" cy="63" r="4" fill="#c8845a"/>
+              <circle cx="29" cy="40" r="30" stroke="rgba(180,80,220,0.12)" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+          <!-- Puzzle -->
+          <div class="s2-puzzle-wrap">
+            <svg width="100" height="50" viewBox="0 0 110 55" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2,4 H36 Q38,4 38,6 Q38,0 42,0 Q46,0 46,6 Q46,4 48,4 H48 V42 Q48,44 46,44 Q52,46 52,50 Q52,54 46,54 Q48,54 48,55 V55 H2 V4 Z" fill="rgba(220,140,100,0.25)" stroke="rgba(200,110,70,0.6)" stroke-width="1.5"/>
+              <text x="18" y="30" font-size="16" text-anchor="middle">🏍️</text>
+              <path d="M62,4 H108 V55 H62 V55 Q64,55 64,50 Q64,46 62,44 H60 Q60,54 54,54 Q48,54 48,50 Q48,46 60,44 Q60,44 62,44 V4 Z" fill="rgba(155,90,195,0.22)" stroke="rgba(130,60,175,0.55)" stroke-width="1.5"/>
+              <text x="85" y="30" font-size="16" text-anchor="middle">🧘‍♀️</text>
+              <text x="55" y="16" font-size="11" text-anchor="middle" fill="#ffd060">✨</text>
+            </svg>
+          </div>
+          <div class="s2-spark" style="top:18px;left:25px;animation-duration:2.2s;">✦</div>
+          <div class="s2-spark" style="top:38px;right:28px;animation-duration:1.8s;animation-delay:.5s;">✧</div>
+        </div>
+        <div class="txt">
+          <div class="lbl anim-1">two worlds, one heart 🧩</div>
+          <div class="headline anim-2" style="color:#2a4a3a;">You two fit together like <em style="color:#c06050;font-style:italic;">missing pieces of a puzzle</em> - just perfectly and so beautifully 🧩</div>
+          <div class="body-txt anim-3">A biker & a yogi. Different roads, same heart. God knew exactly what He was doing 🩷</div>
+          <div class="emoji-row anim-4">🏍️ 🧩 🧘‍♀️ ✨</div>
+        </div>
+      </div>
+
+      <!-- PAGE 3 -->
+      <div class="page" id="page2">
+        <div class="scene s3-scene">
+          <div class="s3-bg"></div>
+          <div class="star-bg" id="starBg"></div>
+          <div class="s3-moon"></div>
+          <div class="shoot" style="top:22px;left:30px;animation-duration:6s;animation-delay:0s;"></div>
+          <div class="shoot" style="top:52px;left:80px;animation-duration:6s;animation-delay:3s;"></div>
+          <div class="petal" style="left:8%;animation-duration:5s;">🌸</div>
+          <div class="petal" style="left:22%;animation-duration:7s;animation-delay:1s;">🌺</div>
+          <div class="petal" style="left:55%;animation-duration:6s;animation-delay:2s;">🌸</div>
+          <div class="petal" style="left:78%;animation-duration:5.5s;animation-delay:.5s;">✨</div>
+          <div class="petal" style="left:42%;animation-duration:8s;animation-delay:3s;">🌸</div>
+          <div class="s3-orbs">
+            <div class="orb orb-l">🏍️</div>
+            <div class="orb orb-r">🧘‍♀️</div>
+            <div class="orb-line"></div>
+          </div>
+          <div class="s3-heart">🩷</div>
+        </div>
+        <div class="txt" style="background:linear-gradient(160deg,#2a0f4a,#1e0838);border-radius:0 0 26px 26px;">
+          <div class="lbl anim-1" style="color:#d4a0ff;">written in the stars 🌙</div>
+          <div class="headline anim-2" style="color:#ffffff;">Wishing you both endless conversations, <em style="color:#ffb3d9;font-style:italic;">love & so much happiness</em> 🌙</div>
+          <div class="body-txt anim-3" style="color:#e8d5ff;">May every laugh be loud, every silence be comfortable, and every day feel like that first conversation. 🌊</div>
+          <div class="funny anim-4" style="color:#ffb3d9;">okay cute fellows don't make me cry now 😭🩷</div>
+          <div class="emoji-row anim-5">🌙 🧩 🌸 💫 🩷</div>
+        </div>
+      </div>
+
+    </div><!-- /pages -->
+
+    <!-- NAV BAR -->
+    <div class="nav-bar">
+      <button class="nav-pill prev-pill" id="prevBtn" onclick="prevPage()" disabled>&#8592;</button>
+      <div class="dots">
+        <div class="dot active" onclick="goPage(0)"></div>
+        <div class="dot" onclick="goPage(1)"></div>
+        <div class="dot" onclick="goPage(2)"></div>
+      </div>
+      <button class="nav-pill next-pill" id="nextBtn" onclick="nextPage()">&#8594;</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Particles
+const emojis=['🌸','✨','🩷','💫','🌺','✦','🕊️'];
+const pc=document.getElementById('particles');
+for(let i=0;i<14;i++){
+  const p=document.createElement('div');p.className='particle';
+  p.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+  p.style.cssText=`left:${Math.random()*100}vw;animation-duration:${8+Math.random()*12}s;animation-delay:${Math.random()*10}s;font-size:${10+Math.random()*10}px;`;
+  pc.appendChild(p);
+}
+// Stars for slide 3
+const sb=document.getElementById('starBg');
+for(let i=0;i<55;i++){
+  const s=document.createElement('div');s.className='star-dot';
+  const sz=Math.random()*2.4+.7;
+  s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-duration:${1.5+Math.random()*3}s;animation-delay:${Math.random()*3}s;`;
+  sb.appendChild(s);
+}
+
+// Page navigation
+let cur=0;
+const pages=document.querySelectorAll('.page');
+const dots=document.querySelectorAll('.dot');
+
+function goPage(n){
+  // exit current
+  pages[cur].classList.remove('active');
+  pages[cur].classList.add('exit-left');
+  setTimeout(()=>pages[cur].classList.remove('exit-left'),450);
+  cur=n;
+  // re-trigger animations by removing and re-adding anim classes
+  pages[cur].querySelectorAll('[class*="anim-"]').forEach(el=>{
+    const cls=[...el.classList].find(c=>c.startsWith('anim-'));
+    el.classList.remove(cls);
+    void el.offsetWidth; // reflow
+    el.classList.add(cls);
+  });
+  pages[cur].classList.add('active');
+  dots.forEach((d,i)=>d.classList.toggle('active',i===cur));
+  document.getElementById('prevBtn').disabled=cur===0;
+  document.getElementById('nextBtn').disabled=cur===pages.length-1;
+}
+function nextPage(){if(cur<pages.length-1)goPage(cur+1);}
+function prevPage(){if(cur>0)goPage(cur-1);}
+
+// Touch swipe
+let tx=0;
+document.getElementById('pages').addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+document.getElementById('pages').addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx;
+  if(dx<-40)nextPage();else if(dx>40)prevPage();
+});
+
+function openCard(){
+  const env=document.getElementById('envelope');
+  const overlay=document.getElementById('cardOverlay');
+  env.classList.add('opened');
+  setTimeout(()=>{
+    overlay.style.display='flex';
+    // force reflow so transition fires
+    overlay.offsetHeight;
+    overlay.style.opacity='1';
+    overlay.classList.add('visible');
+  },650);
+}
+function closeCard(){
+  const overlay=document.getElementById('cardOverlay');
+  overlay.style.opacity='0';
+  overlay.classList.remove('visible');
+  setTimeout(()=>{
+    overlay.style.display='none';
+    document.getElementById('envelope').classList.remove('opened');
+    goPage(0);
+  },500);
+}
+document.getElementById('cardOverlay').addEventListener('click',function(e){if(e.target===this)closeCard();});
+</script>
+</body>
+</html>
